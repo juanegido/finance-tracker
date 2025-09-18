@@ -57,7 +57,7 @@ def check_environment():
         if not value:
             missing_vars.append(var)
         else:
-            print(f"✅ {var}: {value[:10]}..." if len(str(value)) > 10 else f"✅ {var}: {value}")
+            print(f"[OK] {var}: {value[:10]}..." if len(str(value)) > 10 else f"[OK] {var}: {value}")
     
     if missing_vars:
         print(f"\n❌ Missing environment variables: {', '.join(missing_vars)}")
@@ -66,7 +66,7 @@ def check_environment():
             print(f"{var}=your_value_here")
         return False
     
-    print("✅ All environment variables configured")
+    print("[OK] All environment variables configured")
     return True
 
 def setup_plaid():
@@ -75,7 +75,7 @@ def setup_plaid():
     
     # Check if access token already exists
     if os.path.exists('_access_token.json'):
-        print("✅ Access token already exists")
+        print("[OK] Access token already exists")
         return True
     
     print("Creating link token...")
@@ -90,7 +90,7 @@ def setup_plaid():
         )
         resp = client.link_token_create(req)
         link_token = resp.link_token
-        print(f"✅ Link token created: {link_token[:20]}...")
+        print(f"[OK] Link token created: {link_token[:20]}...")
         
         # Create HTML for connection
         html_content = f"""
@@ -178,7 +178,7 @@ def setup_plaid():
             if public_token and public_token.startswith('public-'):
                 print(f"🔄 Exchanging public token for access token...")
                 if exchange_public_token(public_token):
-                    print(f"✅ Plaid setup completed successfully!")
+                    print(f"[OK] Plaid setup completed successfully!")
                     return True
                 else:
                     print(f"❌ Failed to exchange token. Please try again.")
@@ -209,7 +209,7 @@ def exchange_public_token(public_token):
         with open('_access_token.json', 'w') as f:
             json.dump(token_data, f, indent=2)
         
-        print(f"✅ Access token saved to _access_token.json")
+        print(f"[OK] Access token saved to _access_token.json")
         return True
         
     except Exception as e:
@@ -232,7 +232,7 @@ def setup_google_sheets():
         print("6. Share your Google Sheet with the service account email")
         return False
     
-    print("✅ credentials.json found")
+    print("[OK] credentials.json found")
     
     # Check if it's Service Account or OAuth
     try:
@@ -240,12 +240,12 @@ def setup_google_sheets():
             creds_data = json.load(f)
         
         if 'type' in creds_data and creds_data['type'] == 'service_account':
-            print("✅ Service Account detected - no additional authentication required")
+            print("[OK] Service Account detected - no additional authentication required")
             return True
         else:
             # It's OAuth credentials, check if token.json exists
             if os.path.exists('token.json'):
-                print("✅ Google Sheets token already exists")
+                print("[OK] Google Sheets token already exists")
                 return True
             
             # Authenticate with Google OAuth
@@ -257,7 +257,7 @@ def setup_google_sheets():
             with open('token.json', 'w') as token:
                 token.write(creds.to_json())
             
-            print("✅ Google authentication completed")
+            print("[OK] Google authentication completed")
             return True
         
     except Exception as e:
@@ -311,9 +311,9 @@ def setup_sheet_headers():
                 body=body
             ).execute()
             
-            print("✅ Headers set up in Google Sheet")
+            print("[OK] Headers set up in Google Sheet")
         else:
-            print("✅ Headers already exist in Google Sheet")
+            print("[OK] Headers already exist in Google Sheet")
         
         return True
         

@@ -165,7 +165,7 @@ def append_transactions_to_sheet(service, transactions_data):
             body=body
         ).execute()
         
-        print(f"✅ Added {len(transactions_data)} transactions to Google Sheet")
+        print(f"[OK] Added {len(transactions_data)} transactions to Google Sheet")
         
     except Exception as e:
         print(f"❌ Error appending to Google Sheet: {e}")
@@ -184,14 +184,14 @@ def main():
     if not access_token:
         return 1
     
-    print("✅ Plaid access token loaded")
+    print("[OK] Plaid access token loaded")
     
     # Get Google Sheets service
     service = get_google_sheets_service()
     if not service:
         return 1
     
-    print("✅ Google Sheets service authenticated")
+    print("[OK] Google Sheets service authenticated")
     
     # Get existing transactions
     existing_ids = get_existing_transaction_ids(service)
@@ -229,9 +229,9 @@ def main():
         if len(new_transactions) > 5:
             print(f"  ... and {len(new_transactions) - 5} more")
     else:
-        print("✅ No new transactions found")
+        print("[OK] No new transactions found")
     
-    print(f"\n✅ Sync completed successfully!")
+    print(f"\n[OK] Sync completed successfully!")
     print(f"Total new transactions processed: {len(new_transactions)}")
     
     return 0
