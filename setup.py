@@ -60,7 +60,7 @@ def check_environment():
             print(f"[OK] {var}: {value[:10]}..." if len(str(value)) > 10 else f"[OK] {var}: {value}")
     
     if missing_vars:
-        print(f"\n❌ Missing environment variables: {', '.join(missing_vars)}")
+        print(f"\n[ERROR] Missing environment variables: {', '.join(missing_vars)}")
         print("Add these to your .env file:")
         for var in missing_vars:
             print(f"{var}=your_value_here")
@@ -130,7 +130,7 @@ def setup_plaid():
                 onSuccess: async function(public_token, metadata) {{
                     console.log('Success!', public_token);
                     document.getElementById('result').innerHTML = 
-                        '<div class="success"><h3>✅ Success!</h3>' +
+                        '<div class="success"><h3>[OK] Success!</h3>' +
                         '<p><strong>Public Token:</strong></p>' +
                         '<p style="background: white; padding: 10px; border-radius: 3px; word-break: break-all;">' + public_token + '</p>' +
                         '<p><strong>Copy this token and paste it in the terminal when prompted.</strong></p></div>';
@@ -139,7 +139,7 @@ def setup_plaid():
                     console.log('Exit', err, metadata);
                     if (err) {{
                         document.getElementById('result').innerHTML = 
-                            '<div style="color: #dc3545;"><h3>❌ Connection Failed</h3>' +
+                            '<div style="color: #dc3545;"><h3>[ERROR] Connection Failed</h3>' +
                             '<p>Error: ' + err.error_message + '</p>' +
                             '<p>Please try again.</p></div>';
                     }}
@@ -154,8 +154,8 @@ def setup_plaid():
         with open('plaid_link.html', 'w') as f:
             f.write(html_content)
         
-        print(f"\n🌐 Opening browser to connect your bank...")
-        print(f"📄 If browser doesn't open, manually open: plaid_link.html")
+        print(f"\n[INFO] Opening browser to connect your bank...")
+        print(f"[INFO] If browser doesn't open, manually open: plaid_link.html")
         
         # Try to open browser automatically
         try:
@@ -165,30 +165,30 @@ def setup_plaid():
             pass
         
         # Wait for user to provide public token
-        print(f"\n⏳ Waiting for you to connect your bank...")
-        print(f"📋 After connecting, copy the public token and paste it here:")
+        print(f"\n[WAIT] Waiting for you to connect your bank...")
+        print(f"[INFO] After connecting, copy the public token and paste it here:")
         
         while True:
-            public_token = input("\n🔑 Enter public token (or 'quit' to exit): ").strip()
+            public_token = input("\n[INPUT] Enter public token (or 'quit' to exit): ").strip()
             
             if public_token.lower() == 'quit':
-                print("❌ Setup cancelled")
+                print("[ERROR] Setup cancelled")
                 return False
             
             if public_token and public_token.startswith('public-'):
-                print(f"🔄 Exchanging public token for access token...")
+                print(f"[PROCESS] Exchanging public token for access token...")
                 if exchange_public_token(public_token):
                     print(f"[OK] Plaid setup completed successfully!")
                     return True
                 else:
-                    print(f"❌ Failed to exchange token. Please try again.")
+                    print(f"[ERROR] Failed to exchange token. Please try again.")
                     continue
             else:
-                print(f"❌ Invalid token format. Please enter a valid public token.")
+                print(f"[ERROR] Invalid token format. Please enter a valid public token.")
                 continue
         
     except Exception as e:
-        print(f"❌ Error creating link token: {e}")
+        print(f"[ERROR] Error creating link token: {e}")
         return False
 
 def exchange_public_token(public_token):
@@ -213,7 +213,7 @@ def exchange_public_token(public_token):
         return True
         
     except Exception as e:
-        print(f"❌ Error exchanging token: {e}")
+        print(f"[ERROR] Error exchanging token: {e}")
         return False
 
 def setup_google_sheets():
@@ -222,12 +222,12 @@ def setup_google_sheets():
     
     # Check if credentials.json exists
     if not os.path.exists('credentials.json'):
-        print("❌ credentials.json not found!")
+        print("[ERROR] credentials.json not found!")
         print("\nTo setup Google Sheets API:")
         print("1. Go to https://console.cloud.google.com/")
         print("2. Create a new project or select existing one")
         print("3. Enable Google Sheets API")
-        print("4. Go to 'Credentials' → 'Create Credentials' → 'Service Account'")
+        print("4. Go to 'Credentials' -> 'Create Credentials' -> 'Service Account'")
         print("5. Download the JSON file and save as 'credentials.json'")
         print("6. Share your Google Sheet with the service account email")
         return False
@@ -261,7 +261,7 @@ def setup_google_sheets():
             return True
         
     except Exception as e:
-        print(f"❌ Error authenticating with Google: {e}")
+        print(f"[ERROR] Error authenticating with Google: {e}")
         return False
 
 def setup_sheet_headers():
@@ -318,7 +318,7 @@ def setup_sheet_headers():
         return True
         
     except Exception as e:
-        print(f"❌ Error setting up headers: {e}")
+        print(f"[ERROR] Error setting up headers: {e}")
         return False
 
 def main():
@@ -340,7 +340,7 @@ def main():
     if not setup_sheet_headers():
         return
     
-    print("\n🎉 Setup completed!")
+    print("\n[SUCCESS] Setup completed!")
     print("You can now run: python sync.py")
 
 if __name__ == "__main__":

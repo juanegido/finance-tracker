@@ -48,10 +48,10 @@ def load_access_token():
             data = json.load(f)
             return data['access_token']
     except FileNotFoundError:
-        print("❌ _access_token.json not found. Run python setup.py first")
+        print("[ERROR] _access_token.json not found. Run python setup.py first")
         return None
     except Exception as e:
-        print(f"❌ Error loading access token: {e}")
+        print(f"[ERROR] Error loading access token: {e}")
         return None
 
 def get_google_sheets_service():
@@ -84,7 +84,7 @@ def get_google_sheets_service():
         return service
         
     except Exception as e:
-        print(f"❌ Error authenticating with Google Sheets: {e}")
+        print(f"[ERROR] Error authenticating with Google Sheets: {e}")
         return None
 
 def categorize_transaction(txn):
@@ -144,7 +144,7 @@ def get_existing_transaction_ids(service):
         # Skip header and return set of transaction IDs
         return set(row[0] for row in values[1:] if row)
     except Exception as e:
-        print(f"⚠️  Could not fetch existing transactions: {e}")
+        print(f"[WARNING] Could not fetch existing transactions: {e}")
         return set()
 
 def append_transactions_to_sheet(service, transactions_data):
@@ -168,14 +168,14 @@ def append_transactions_to_sheet(service, transactions_data):
         print(f"[OK] Added {len(transactions_data)} transactions to Google Sheet")
         
     except Exception as e:
-        print(f"❌ Error appending to Google Sheet: {e}")
+        print(f"[ERROR] Error appending to Google Sheet: {e}")
 
 def main():
     print("=== Finance Tracker Sync ===")
     
     # Validate configuration
     if not SPREADSHEET_ID:
-        print("❌ GOOGLE_SHEET_ID not found in environment variables")
+        print("[ERROR] GOOGLE_SHEET_ID not found in environment variables")
         print("Add GOOGLE_SHEET_ID to your .env file")
         return 1
     
@@ -208,7 +208,7 @@ def main():
         transactions = txn_resp.transactions
         print(f"Fetched {len(transactions)} total transactions")
     except Exception as e:
-        print(f"❌ Error fetching transactions: {e}")
+        print(f"[ERROR] Error fetching transactions: {e}")
         return 1
     
     # Process and categorize transactions
