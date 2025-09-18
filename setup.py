@@ -92,24 +92,36 @@ def setup_plaid():
         link_token = resp.link_token
         print(f"✅ Link token created: {link_token[:20]}...")
         
-        # For sandbox, use test credentials
-        if PLAID_ENV == "sandbox":
-            print("\n=== Using Sandbox Test Credentials ===")
-            print("Username: user_good")
-            print("Password: pass_good")
-            
-            # Create HTML for testing
-            html_content = f"""
+        # Create HTML for connection
+        html_content = f"""
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Plaid Link Test</title>
+    <title>Plaid Link - Connect Your Bank</title>
     <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+    <style>
+        body {{ font-family: Arial, sans-serif; margin: 40px; }}
+        .container {{ max-width: 600px; margin: 0 auto; }}
+        button {{ background: #007bff; color: white; padding: 15px 30px; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; }}
+        button:hover {{ background: #0056b3; }}
+        #result {{ margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px; }}
+        .success {{ color: #28a745; }}
+        .instructions {{ background: #e9ecef; padding: 15px; border-radius: 5px; margin: 20px 0; }}
+    </style>
 </head>
 <body>
-    <h2>Connect Bank</h2>
-    <button id="link-button">Connect Bank</button>
-    <div id="result"></div>
+    <div class="container">
+        <h2>Connect Your Bank Account</h2>
+        <div class="instructions">
+            <p><strong>Instructions:</strong></p>
+            <p>1. Click "Connect Bank" below</p>
+            <p>2. Select your bank and enter your credentials</p>
+            <p>3. Copy the public token that appears</p>
+            <p>4. Paste it in the terminal when prompted</p>
+        </div>
+        <button id="link-button">Connect Bank</button>
+        <div id="result"></div>
+    </div>
     
     <script>
         document.getElementById('link-button').onclick = function() {{
@@ -118,11 +130,19 @@ def setup_plaid():
                 onSuccess: async function(public_token, metadata) {{
                     console.log('Success!', public_token);
                     document.getElementById('result').innerHTML = 
-                        '<p>Success! Public token: ' + public_token + '</p>' +
-                        '<p>Copy this token and run: python setup.py --exchange-token ' + public_token + '</p>';
+                        '<div class="success"><h3>✅ Success!</h3>' +
+                        '<p><strong>Public Token:</strong></p>' +
+                        '<p style="background: white; padding: 10px; border-radius: 3px; word-break: break-all;">' + public_token + '</p>' +
+                        '<p><strong>Copy this token and paste it in the terminal when prompted.</strong></p></div>';
                 }},
                 onExit: function(err, metadata) {{
                     console.log('Exit', err, metadata);
+                    if (err) {{
+                        document.getElementById('result').innerHTML = 
+                            '<div style="color: #dc3545;"><h3>❌ Connection Failed</h3>' +
+                            '<p>Error: ' + err.error_message + '</p>' +
+                            '<p>Please try again.</p></div>';
+                    }}
                 }}
             }});
             handler.open();
@@ -131,14 +151,41 @@ def setup_plaid():
 </body>
 </html>
 """
-            with open('plaid_link.html', 'w') as f:
-                f.write(html_content)
+        with open('plaid_link.html', 'w') as f:
+            f.write(html_content)
+        
+        print(f"\n🌐 Opening browser to connect your bank...")
+        print(f"📄 If browser doesn't open, manually open: plaid_link.html")
+        
+        # Try to open browser automatically
+        try:
+            import webbrowser
+            webbrowser.open('plaid_link.html')
+        except:
+            pass
+        
+        # Wait for user to provide public token
+        print(f"\n⏳ Waiting for you to connect your bank...")
+        print(f"📋 After connecting, copy the public token and paste it here:")
+        
+        while True:
+            public_token = input("\n🔑 Enter public token (or 'quit' to exit): ").strip()
             
-            print("4. Open plaid_link.html in your browser to connect")
-            print("5. After getting the public token, run:")
-            print("   python setup.py --exchange-token YOUR_PUBLIC_TOKEN")
+            if public_token.lower() == 'quit':
+                print("❌ Setup cancelled")
+                return False
             
-        return True
+            if public_token and public_token.startswith('public-'):
+                print(f"🔄 Exchanging public token for access token...")
+                if exchange_public_token(public_token):
+                    print(f"✅ Plaid setup completed successfully!")
+                    return True
+                else:
+                    print(f"❌ Failed to exchange token. Please try again.")
+                    continue
+            else:
+                print(f"❌ Invalid token format. Please enter a valid public token.")
+                continue
         
     except Exception as e:
         print(f"❌ Error creating link token: {e}")
@@ -275,16 +322,6 @@ def setup_sheet_headers():
         return False
 
 def main():
-    import sys
-    
-    # If --exchange-token is passed, exchange token
-    if len(sys.argv) > 2 and sys.argv[1] == '--exchange-token':
-        public_token = sys.argv[2]
-        if exchange_public_token(public_token):
-            print("\n🎉 Plaid setup completed!")
-            print("Now run: python setup.py to complete configuration")
-        return
-    
     print("=== Finance Tracker Setup ===")
     
     # Check environment
