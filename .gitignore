@@ -1,3 +1,20 @@
+# Environment variables and secrets
+.env
+.env.local
+.env.*.local
+
+# Plaid access tokens and credentials
+_access_token.json
+_access_token_backup_*.json
+_bank_accounts.json
+
+# Google Sheets credentials
+credentials.json
+token.json
+
+# Generated HTML files
+plaid_link.html
+
 # Python
 __pycache__/
 *.py[cod]
@@ -19,38 +36,34 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
 
-# Virtual Environment
+# Virtual environments
 venv/
 env/
 ENV/
+env.bak/
+venv.bak/
 
-# IDE
+# IDE files
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
 
-# OS
+# OS files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 
-# Plaid tokens and sensitive data
-access_token.json
-*.json
-.env
-.env.local
-.env.production
-
-# Data files
-transactions.csv
-*.csv
-plaid_link.html
-
 # Logs
+logs/
 *.log
 
-# Environment variables
-.env
-.env.local
-.env.production
+# Claude documentation
+CLAUDE.md

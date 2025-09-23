@@ -18,9 +18,13 @@ from plaid.model.country_code import CountryCode
 from plaid.model.item_public_token_exchange_request import ItemPublicTokenExchangeRequest
 
 # Google Sheets imports
+from google.oauth2.credentials import Credentials
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
+
+# Bank account management
+from bank_accounts import BankAccountManager
 
 # Load environment variables
 load_dotenv()
@@ -73,10 +77,50 @@ def setup_plaid():
     """Setup Plaid connection"""
     print("\n=== Setting up Plaid ===")
     
-    # Check if access token already exists
-    if os.path.exists('_access_token.json'):
-        print("[OK] Access token already exists")
+    # Initialize bank account manager
+    bank_manager = BankAccountManager(client)
+    
+    # Check if we already have bank accounts
+    if bank_manager.accounts:
+        print(f"[OK] Found {len(bank_manager.accounts)} existing bank accounts")
+        bank_manager.list_accounts()
+        
+        # Ask if user wants to add more accounts
+        while True:
+            add_more = input("\n[INPUT] Do you want to add another bank account? (y/n): ").strip().lower()
+            if add_more in ['y', 'yes']:
+                if link_new_account(bank_manager):
+                    continue
+                else:
+                    break
+            elif add_more in ['n', 'no']:
+                break
+            else:
+                print("[ERROR] Please enter 'y' or 'n'")
+        
         return True
+    
+    # Check if legacy access token exists
+    if os.path.exists('_access_token.json'):
+        print("[INFO] Found legacy access token. Migrating to new system...")
+        if bank_manager.migrate_legacy_token():
+            print("[OK] Legacy token migrated successfully")
+            return True
+        else:
+            print("[ERROR] Failed to migrate legacy token")
+    
+    # No accounts found, need to link first account
+    print("[INFO] No bank accounts found. Let's link your first account...")
+    return link_new_account(bank_manager)
+
+def link_new_account(bank_manager):
+    """Link a new bank account"""
+    print("\n=== Linking New Bank Account ===")
+    
+    # Get account name from user
+    account_name = input("[INPUT] Enter a name for this bank account (or press Enter for auto-generated): ").strip()
+    if not account_name:
+        account_name = None
     
     print("Creating link token...")
     try:
@@ -172,13 +216,13 @@ def setup_plaid():
             public_token = input("\n[INPUT] Enter public token (or 'quit' to exit): ").strip()
             
             if public_token.lower() == 'quit':
-                print("[ERROR] Setup cancelled")
+                print("[ERROR] Account linking cancelled")
                 return False
             
             if public_token and public_token.startswith('public-'):
                 print(f"[PROCESS] Exchanging public token for access token...")
-                if exchange_public_token(public_token):
-                    print(f"[OK] Plaid setup completed successfully!")
+                if exchange_public_token(public_token, bank_manager, account_name):
+                    print(f"[OK] Bank account linked successfully!")
                     return True
                 else:
                     print(f"[ERROR] Failed to exchange token. Please try again.")
@@ -191,26 +235,21 @@ def setup_plaid():
         print(f"[ERROR] Error creating link token: {e}")
         return False
 
-def exchange_public_token(public_token):
-    """Exchange public token for access token"""
+def exchange_public_token(public_token, bank_manager, account_name=None):
+    """Exchange public token for access token and add to bank manager"""
     print(f"\n=== Exchanging public token ===")
     
     try:
         ex = client.item_public_token_exchange(ItemPublicTokenExchangeRequest(public_token=public_token))
         access_token = ex.access_token
         
-        # Save access token
-        token_data = {
-            'access_token': access_token,
-            'created_at': datetime.datetime.now().isoformat(),
-            'environment': PLAID_ENV
-        }
-        
-        with open('_access_token.json', 'w') as f:
-            json.dump(token_data, f, indent=2)
-        
-        print(f"[OK] Access token saved to _access_token.json")
-        return True
+        # Add account to bank manager
+        if bank_manager.add_account(access_token, account_name):
+            print(f"[OK] Bank account added successfully")
+            return True
+        else:
+            print(f"[ERROR] Failed to add bank account")
+            return False
         
     except Exception as e:
         print(f"[ERROR] Error exchanging token: {e}")
@@ -265,7 +304,7 @@ def setup_google_sheets():
         return False
 
 def setup_sheet_headers():
-    """Setup headers in Google Sheet"""
+    """Setup headers in Google Sheet for each bank account"""
     print("\n=== Setting up Google Sheet headers ===")
     
     try:
@@ -289,32 +328,51 @@ def setup_sheet_headers():
         
         service = build('sheets', 'v4', credentials=creds)
         
-        # Check if headers already exist
-        range_name = "All_Transactions!A1:F1"
-        result = service.spreadsheets().values().get(
-            spreadsheetId=SPREADSHEET_ID, 
-            range=range_name
-        ).execute()
+        # Initialize bank account manager to get account info
+        bank_manager = BankAccountManager(client)
         
-        values = result.get('values', [])
+        if not bank_manager.accounts:
+            print("[INFO] No bank accounts found. Headers will be set up when accounts are linked.")
+            return True
         
-        # If no headers or wrong headers, set them up
-        if not values or values[0] != ['transaction_id', 'date', 'name', 'amount', 'category', 'project']:
-            headers = [['transaction_id', 'date', 'name', 'amount', 'category', 'project']]
+        # Set up headers for each bank account sheet
+        for account_id, account_data in bank_manager.accounts.items():
+            sheet_name = account_data.get('sheet_name', account_data['account_name'])
+            print(f"Setting up headers for sheet: {sheet_name}")
             
-            body = {'values': headers}
-            
-            service.spreadsheets().values().update(
-                spreadsheetId=SPREADSHEET_ID,
-                range="All_Transactions!A1:F1",
-                valueInputOption='RAW',
-                body=body
-            ).execute()
-            
-            print("[OK] Headers set up in Google Sheet")
-        else:
-            print("[OK] Headers already exist in Google Sheet")
+            try:
+                # Check if headers already exist
+                range_name = f"{sheet_name}!A1:F1"
+                result = service.spreadsheets().values().get(
+                    spreadsheetId=SPREADSHEET_ID, 
+                    range=range_name
+                ).execute()
+                
+                values = result.get('values', [])
+                
+                # If no headers or wrong headers, set them up
+                expected_headers = ['transaction_id', 'date', 'name', 'amount', 'category', 'project']
+                if not values or values[0] != expected_headers:
+                    headers = [expected_headers]
+                    
+                    body = {'values': headers}
+                    
+                    service.spreadsheets().values().update(
+                        spreadsheetId=SPREADSHEET_ID,
+                        range=f"{sheet_name}!A1:F1",
+                        valueInputOption='RAW',
+                        body=body
+                    ).execute()
+                    
+                    print(f"[OK] Headers set up for sheet '{sheet_name}'")
+                else:
+                    print(f"[OK] Headers already exist for sheet '{sheet_name}'")
+                    
+            except Exception as e:
+                print(f"[WARNING] Could not set up headers for '{sheet_name}': {e}")
+                continue
         
+        print("[OK] Google Sheet headers setup completed")
         return True
         
     except Exception as e:
